@@ -31,5 +31,18 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- Home Screen Widget Receiver -->
+        <receiver
+            android:name=".PartitionWidgetReceiver"
+            android:exported="true"
+            android:label="Alarm Partitions">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/partition_widget_info" />
+        </receiver>
+
     </application>
 </manifest>
