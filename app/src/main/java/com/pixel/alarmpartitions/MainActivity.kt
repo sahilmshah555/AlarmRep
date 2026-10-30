@@ -26,9 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -89,6 +95,19 @@ fun AlarmPartitionScreen() {
     var showCreateDialog by remember { mutableStateOf(false) }
     var isAccessibilityReady by remember {
         mutableStateOf(ClockAutomationService.isServiceEnabled(context))
+    }
+
+    // Keep UI synced with changes made from the Home Screen Widget
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                partitions = Storage.load(context)
+                isAccessibilityReady = ClockAutomationService.isServiceEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -492,10 +511,16 @@ object Storage {
             }
             arr.put(obj)
         }
+        // Use commit() so widget reads updated state synchronously
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_DATA, arr.toString())
-            .apply()
+            .commit()
+
+        // Refresh Home Screen Widget immediately
+        MainScope().launch {
+            PartitionWidget().updateAll(context)
+        }
     }
 
     private fun defaultPresets(): List<AlarmPartition> = listOf(
